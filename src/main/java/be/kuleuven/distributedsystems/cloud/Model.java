@@ -173,18 +173,17 @@ public class Model {
         try {
             JsonNode node = new ObjectMapper().readTree(response);
             UUID uuid = UUID.fromString(node.get("ticketId").toString().substring(1, 36));
-            Ticket ticket = new Ticket(
+            return new Ticket(
                     node.get("company").toString(),
                     showId,
                     seatId,
                     uuid,
                     node.get("company").toString()
             );
-            return ticket;
         } catch (Exception e) {
             System.out.println(e);
             System.out.println(e.getMessage());
-            return new Ticket();
+            return null;
         }
     }
 
@@ -232,24 +231,32 @@ public class Model {
         return new HashSet<>(bestCustomers);
     }
 
-    public void confirmQuotes(List<Quote> quotes, String customer) {
+    public void confirmQuotes(List<Quote> quotes, String customer) throws InvalidReservationException {
         ArrayList<Ticket> tickets = new ArrayList<>();
 
+        // Check if ticket is reservable
+        for (Quote quote : quotes) {
+            // Check if ticket exists
+            Ticket ticket = this.getTicket(quote.getCompany(), quote.getShowId(), quote.getSeatId());
+            if (ticket == null) throw new InvalidReservationException("Ticket already reserved, booking cancelled.");
+        }
+
+        // Reserve ticket
         for (Quote quote : quotes) {
             // Create ticket and add to ticket list
             Ticket ticket = new Ticket(quote.getCompany(), quote.getShowId(),
                     quote.getSeatId(), UUID.randomUUID(), customer);
-            tickets.add(ticket);
 
             // Create seat object to get reservation link
             Seat seat = this.getSeat(quote.getCompany(), quote.getShowId(), quote.getSeatId());
-
             // Confirm ticket reservation
             reliableClient.put()
                     .uri(seat.getPutTicketLink() + customer + "&" + apiKey)
                     .retrieve()
                     .bodyToMono(String.class);
         }
+
+        // Create and save booking
         Booking booking = new Booking(UUID.randomUUID(), LocalDateTime.now(), tickets, customer);
         this.bookings.add(booking);
     }
