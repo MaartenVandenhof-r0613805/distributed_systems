@@ -142,7 +142,6 @@
     <orderEntry type="library" name="Maven: com.google.api:gax:2.4.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.auth:google-auth-library-oauth2-http:1.1.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.http-client:google-http-client-gson:1.40.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.8.7" level="project" />
     <orderEntry type="library" name="Maven: com.google.api:gax-grpc:2.4.0" level="project" />
     <orderEntry type="library" name="Maven: io.grpc:grpc-auth:1.40.1" level="project" />
     <orderEntry type="library" name="Maven: com.google.auth:google-auth-library-credentials:1.1.0" level="project" />
@@ -176,5 +175,6 @@
     <orderEntry type="library" name="Maven: com.sendgrid:sendgrid-java:4.7.5" level="project" />
     <orderEntry type="library" name="Maven: com.sendgrid:java-http-client:4.3.7" level="project" />
     <orderEntry type="library" name="Maven: org.bouncycastle:bcprov-jdk15on:1.69" level="project" />
+    <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.8.5" level="project" />
   </component>
 </module>
