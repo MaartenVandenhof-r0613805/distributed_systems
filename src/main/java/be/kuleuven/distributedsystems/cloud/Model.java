@@ -24,29 +24,39 @@ public class Model {
                 .retrieve()
                 .bodyToMono(String.class).block();
 
-        String responseUnreliable = unreliableClient.get()
-                .uri("/shows/?key=wCIoTqec6vGJijW2meeqSokanZuqOL")
-                .retrieve()
-                .bodyToMono(String.class).block();
+        ArrayList<String> responseList = new ArrayList<>();
+        responseList.add(response);
+
+        try {
+            String responseUnreliable = unreliableClient.get()
+                    .uri("/shows/?key=wCIoTqec6vGJijW2meeqSokanZuqOL")
+                    .retrieve()
+                    .bodyToMono(String.class).block();
+            responseList.add(responseUnreliable);
+        } catch (Exception e) {
+            System.out.println("Unreliable company not added");
+        }
 
         // Create list that will contains all shows
         ArrayList<Show> shows = new ArrayList<>();
         // Get data from JSON
         try {
-            JsonNode jsonNode = new ObjectMapper().readTree(response);
-            for (JsonNode objNode : jsonNode.get("_embedded").get("shows")) {
+            for (String r : responseList) {
+                JsonNode jsonNode = new ObjectMapper().readTree(r);
+                for (JsonNode objNode : jsonNode.get("_embedded").get("shows")) {
 
-                UUID uuid = UUID.fromString(objNode.get("showId").toString().substring(1, 36));
-                JsonNode links = objNode.get("_links");
-                shows.add(
-                        new Show(
-                                objNode.get("company").toString(),
-                                uuid, objNode.get("name").toString(),
-                                objNode.get("location").toString(),
-                                objNode.get("image").toString(),
-                                links.get("times").get("href").toString(),
-                                links.get("seats").get("href").toString())
-                );
+                    UUID uuid = UUID.fromString(objNode.get("showId").toString().substring(1, 36));
+                    JsonNode links = objNode.get("_links");
+                    shows.add(
+                            new Show(
+                                    objNode.get("company").toString().replace("\"", ""),
+                                    uuid, objNode.get("name").toString().replace("\"", ""),
+                                    objNode.get("location").toString().replace("\"", ""),
+                                    objNode.get("image").toString().replace("\"", ""),
+                                    links.get("times").get("href").toString().replace("\"", ""),
+                                    links.get("seats").get("href").toString().replace("\"", ""))
+                    );
+                }
             }
         } catch (Exception e){
             System.out.println(e);
@@ -71,19 +81,34 @@ public class Model {
 
         // Get JSON
         String response = reliableClient.get()
-                .uri(apiLink + "&" + apiKey)
+                .uri(apiLink + "?" + apiKey)
                 .retrieve()
                 .bodyToMono(String.class).block();
+
+        ArrayList<String> responseList = new ArrayList<>();
+        responseList.add(response);
+
+        try {
+            String unreliableResponse = unreliableClient.get()
+                    .uri(apiLink + "?" + apiKey)
+                    .retrieve()
+                    .bodyToMono(String.class).block();
+            responseList.add(unreliableResponse);
+        } catch (Exception e) {
+            System.out.println("Unreliable company not added");
+        }
 
         // Get times from JSON
         ArrayList<LocalDateTime> times = new ArrayList<>();
 
         try {
-            JsonNode node = new ObjectMapper().readTree(response).get("_embedded").get("stringList");
-            for (JsonNode n : node) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                LocalDateTime time = LocalDateTime.parse(n.toString(), formatter);
-                times.add(time);
+            for (String r : responseList) {
+                JsonNode node = new ObjectMapper().readTree(r).get("_embedded").get("stringList");
+                for (JsonNode n : node) {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+                    LocalDateTime time = LocalDateTime.parse(n.toString().replace("\"", ""), formatter);
+                    times.add(time);
+                }
             }
         } catch (Exception e) {
             System.out.println(e);
@@ -99,25 +124,39 @@ public class Model {
                 .retrieve()
                 .bodyToMono(String.class).block();
 
+        ArrayList<String> responseList = new ArrayList<>();
+        responseList.add(response);
+
+        try {
+            String unreliableResponse = unreliableClient.get()
+                    .uri(apiLink + "?" + apiKey)
+                    .retrieve()
+                    .bodyToMono(String.class).block();
+            responseList.add(unreliableResponse);
+        } catch (Exception e) {
+            System.out.println("Unreliable company not added");
+        }
         // Get available seats from JSON
         ArrayList<Seat> seats = new ArrayList<>();
         try {
-            JsonNode node = new ObjectMapper().readTree(response).get("_embedded").get("seats");
-            for (JsonNode n : node) {
-                UUID seatId = UUID.fromString(n.get("seatId").toString().substring(1, 36));
-                JsonNode links = n.get("_links");
-                Seat seat = new Seat(
-                        n.get("company").toString(),
-                        showId,
-                        seatId,
-                        time,
-                        n.get("type").toString(),
-                        n.get("name").toString(),
-                        Integer.parseInt(n.get("price").toString()),
-                        links.get("get-ticket").get("href").toString(),
-                        links.get("put-ticket").get("href").toString()
-                );
-                seats.add(seat);
+            for (String r : responseList) {
+                JsonNode node = new ObjectMapper().readTree(r).get("_embedded").get("seats");
+                for (JsonNode n : node) {
+                    UUID seatId = UUID.fromString(n.get("seatId").toString().substring(1, 36));
+                    JsonNode links = n.get("_links");
+                    Seat seat = new Seat(
+                            company,
+                            showId,
+                            seatId,
+                            time,
+                            n.get("type").toString().replace("\"", ""),
+                            n.get("name").toString().replace("\"", ""),
+                            Float.parseFloat(n.get("price").toString().replace("\"", "")),
+                            links.get("get-ticket").get("href").toString().replace("\"", ""),
+                            links.get("put-ticket").get("href").toString().replace("\"", "")
+                    );
+                    seats.add(seat);
+                }
             }
         } catch (Exception e) {
             System.out.println(e);
@@ -163,28 +202,43 @@ public class Model {
         // Get ticket link
         String getTicketLink = this.getSeat(company, showId, seatId).getGetTicketLink();
 
-        // Get JSON
-        String response = reliableClient.get()
-                .uri(getTicketLink + "?" + apiKey)
-                .retrieve()
-                .bodyToMono(String.class).block();
-
-        // Create ticket object
         try {
-            JsonNode node = new ObjectMapper().readTree(response);
-            UUID uuid = UUID.fromString(node.get("ticketId").toString().substring(1, 36));
-            return new Ticket(
-                    node.get("company").toString(),
-                    showId,
-                    seatId,
-                    uuid,
-                    node.get("company").toString()
-            );
+            // Get JSON
+            String response = reliableClient.get()
+                    .uri(getTicketLink + "?" + apiKey)
+                    .retrieve()
+                    .bodyToMono(String.class).block();
+
+            ArrayList<String> responseList = new ArrayList<>();
+            responseList.add(response);
+
+            try {
+                String unreliableResponse = unreliableClient.get()
+                        .uri(getTicketLink + "?" + apiKey)
+                        .retrieve()
+                        .bodyToMono(String.class).block();
+                responseList.add(unreliableResponse);
+            } catch (Exception e) {
+                System.out.println("Unreliable company not added");
+            }
+
+            // Create ticket object
+            for (String r : responseList) {
+                JsonNode node = new ObjectMapper().readTree(r);
+                UUID uuid = UUID.fromString(node.get("ticketId").toString().substring(1, 36));
+                return new Ticket(
+                        node.get("company").toString().replace("\"", ""),
+                        showId,
+                        seatId,
+                        uuid,
+                        node.get("company").toString().replace("\"", ""));
+            }
         } catch (Exception e) {
             System.out.println(e);
             System.out.println(e.getMessage());
             return null;
         }
+        return null;
     }
 
     public List<Booking> getBookings(String customer) {
@@ -238,7 +292,7 @@ public class Model {
         for (Quote quote : quotes) {
             // Check if ticket exists
             Ticket ticket = this.getTicket(quote.getCompany(), quote.getShowId(), quote.getSeatId());
-            if (ticket == null) throw new InvalidReservationException("Ticket already reserved, booking cancelled.");
+            if (ticket != null) throw new InvalidReservationException("Ticket already reserved, booking cancelled.");
         }
 
         // Reserve ticket
@@ -247,15 +301,31 @@ public class Model {
             Ticket ticket = new Ticket(quote.getCompany(), quote.getShowId(),
                     quote.getSeatId(), UUID.randomUUID(), customer);
 
+            // Add tickets to list
+            tickets.add(ticket);
+
             // Create seat object to get reservation link
             Seat seat = this.getSeat(quote.getCompany(), quote.getShowId(), quote.getSeatId());
-            // Confirm ticket reservation
-            reliableClient.put()
-                    .uri(seat.getPutTicketLink() + customer + "&" + apiKey)
-                    .retrieve()
-                    .bodyToMono(String.class);
-        }
 
+            // Confirm ticket reservation
+            try {
+                reliableClient.put()
+                        .uri(seat.getPutTicketLink() + customer + "&" + apiKey)
+                        .retrieve()
+                        .bodyToMono(String.class);
+            } catch (Exception e) {
+                try {
+                    System.out.println(e);
+                    unreliableClient.put()
+                            .uri(seat.getPutTicketLink() + customer + "&" + apiKey)
+                            .retrieve()
+                            .bodyToMono(String.class);
+                } catch (Exception ex) {
+                    System.out.println(ex);
+                    return;
+                }
+            }
+        }
         // Create and save booking
         Booking booking = new Booking(UUID.randomUUID(), LocalDateTime.now(), tickets, customer);
         this.bookings.add(booking);
